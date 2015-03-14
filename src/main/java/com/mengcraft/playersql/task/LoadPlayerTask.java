@@ -49,9 +49,8 @@ public class LoadPlayerTask implements Runnable {
 	public void run() {
 		try {
 		    
-            do
+            while(true)
             {
-                
                 Connection connection = this.pool.getConnection();
                 PreparedStatement sql = connection
                         .prepareStatement("SELECT `Data`, `Online` FROM `PlayerData` WHERE `Player` = ?;");
@@ -66,6 +65,12 @@ public class LoadPlayerTask implements Runnable {
                     insert.executeUpdate();
                     insert.close();
                     connection.commit();
+                    
+                    result.close();
+                    sql.close();
+                    connection.close();
+                    
+                    break;
                 }
                 else if(result.getInt(2) < 1)
                 {
@@ -79,16 +84,22 @@ public class LoadPlayerTask implements Runnable {
                     this.sync(this.uuid,
                             new JsonParser().parse(result.getString(1))
                                     .getAsJsonArray());
+                    
+                    result.close();
+                    sql.close();
+                    connection.close();
+                    
+                    break;
                 }
-                result.close();
-                sql.close();
-                connection.close();
-                
+                else if(!this.retry.check(this.uuid))
+                {
+                    // Data locked but reach max retry number.
+                    result.close();
+                    sql.close();
+                    connection.close();
+                    throw new RuntimeException(String.format("Unable to fetch data for player(UUID) %s!", this.uuid));
+                }
             }
-            while(this.retry.check(this.uuid));
-		    
-            // Data locked but reach max retry number.
-		    throw new RuntimeException(String.format("Unable to fetch data for player(UUID) %s!", this.uuid));
 		    
 		} catch (SQLException e) {
 			e.printStackTrace();
@@ -97,7 +108,6 @@ public class LoadPlayerTask implements Runnable {
 
     private void sync(final UUID uuid, JsonArray value)
     {
-        
         final double health = value.get(0).getAsDouble();
         final int foodLevel = value.get(1).getAsInt();
         final int exp = value.get(2).getAsInt();
@@ -105,7 +115,8 @@ public class LoadPlayerTask implements Runnable {
         final ItemStack[] armorContents = arrayToStacks(value.get(4).getAsJsonArray());
         final ItemStack[] chestContents = arrayToStacks(value.get(5).getAsJsonArray());
         final Collection<PotionEffect> effects = arrayToEffects(value.get(6).getAsJsonArray());
-        final JsonObject customData = value.get(7).getAsJsonObject();
+        
+        final JsonObject customData = value.size() >= 8 ? value.get(7).getAsJsonObject() : new JsonObject();
         
         // TODO maybe need caching configure
         
@@ -117,7 +128,6 @@ public class LoadPlayerTask implements Runnable {
                 Player player = Bukkit.getPlayer(uuid);
                 if(null == player)
                     return;
-                
                 if(plugin.getConfig().getBoolean("sync.health"))
                 {
                     player.setHealth(health);
