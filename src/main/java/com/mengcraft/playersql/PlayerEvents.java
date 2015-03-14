@@ -17,15 +17,7 @@ public class PlayerEvents implements Listener {
 	    if(AsyncPlayerPreLoginEvent.Result.ALLOWED != e.getLoginResult())
 	        return;
 	    
-	    try
-	    {
 	    manager.runLoadTask(e.getUniqueId());
-	    }
-	    catch(RuntimeException re)
-	    {
-	        e.setLoginResult(AsyncPlayerPreLoginEvent.Result.KICK_OTHER);
-	        e.setKickMessage("Your data cannot be fetched. Please contact an admin.");
-	    }
 	    
 	}
 	

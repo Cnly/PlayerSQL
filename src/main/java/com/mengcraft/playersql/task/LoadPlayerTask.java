@@ -94,10 +94,19 @@ public class LoadPlayerTask implements Runnable {
                 else if(!this.retry.check(this.uuid))
                 {
                     // Data locked but reach max retry number.
+                    
+                    // Force syncing
+                    this.sync(this.uuid,
+                            new JsonParser().parse(result.getString(1))
+                                    .getAsJsonArray());
+                    
+                    plugin.getLogger().warning(String.format("data of player(UUID) %s is being forced to load due to max retries", this.uuid));
+                    
                     result.close();
                     sql.close();
                     connection.close();
-                    throw new RuntimeException(String.format("Unable to fetch data for player(UUID) %s!", this.uuid));
+                    
+                    break;
                 }
             }
 		    
