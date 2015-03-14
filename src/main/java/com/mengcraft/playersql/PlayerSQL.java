@@ -8,8 +8,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 import com.avaje.ebean.config.DataSourceConfig;
 import com.avaje.ebeaninternal.server.lib.sql.DataSourceManager;
 import com.avaje.ebeaninternal.server.lib.sql.DataSourcePool;
-import com.mengcraft.playersql.task.CheckLoadedTask;
-import com.mengcraft.playersql.task.CheckQueuedTask;
 import com.mengcraft.playersql.task.TimerSaveTask;
 
 public class PlayerSQL extends JavaPlugin {
@@ -18,6 +16,7 @@ public class PlayerSQL extends JavaPlugin {
 
 	@Override
 	public void onEnable() {
+	    new TaskManager(this);
 		DataSourceConfig config = new DataSourceConfig();
 		config.setDriver("com.mysql.jdbc.Driver");
 		config.setUrl(getConfig().getString("plugin.database"));
@@ -48,15 +47,14 @@ public class PlayerSQL extends JavaPlugin {
 			TaskManager.getManager().runSaveAll(this, 0);
 		} catch (Exception e) {
 			getLogger().warning("Unable to connect to database.");
-			e.printStackTrace();
+		    e.printStackTrace();
+			getLogger().warning("Can not link to database.");
 		}
 	}
 
 	private void registerEvents() {
 		getServer().getPluginManager().registerEvents(new PlayerEvents(), this);
-		getServer().getScheduler().runTaskTimer(this, new CheckLoadedTask(this), 1, 1);
-		getServer().getScheduler().runTaskTimer(this, new CheckQueuedTask(), 5, 5);
-		getServer().getScheduler().runTaskTimer(this, new TimerSaveTask(this), 6000, 6000);
+		getServer().getScheduler().runTaskTimer(this, new TimerSaveTask(this), 1200, 1200);
 	}
 
 	public PlayerSQL() {
