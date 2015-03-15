@@ -99,6 +99,7 @@ public class TaskManager {
             singlePotionArray.add(GSON.toJsonTree(pe.getType().getName()));
             singlePotionArray.add(GSON.toJsonTree(pe.getDuration()));
             singlePotionArray.add(GSON.toJsonTree(pe.getAmplifier()));
+            singlePotionArray.add(GSON.toJsonTree(pe.isAmbient()));
             
             result.add(singlePotionArray);
             
