@@ -28,9 +28,12 @@ public class TaskManager {
     private static final Gson GSON = new Gson();
     
 	private static TaskManager manager;
+	
 	private final ExecutorService pool = Executors.newCachedThreadPool();
 	private final ItemUtil util = ItemUtil.getUtil();
 	private final PlayerSQL plugin;
+	
+	private HashMap<UUID, Runnable> syncTasks = new HashMap<>();
 	
 	public void runLoadTask(UUID uuid) {
 		this.pool.execute(new LoadPlayerTask(uuid, this.plugin));
@@ -106,6 +109,24 @@ public class TaskManager {
         }
         
         return result;
+    }
+    
+    public void putSyncTask(UUID uuid, Runnable task)
+    {
+        this.syncTasks.put(uuid, task);
+    }
+    
+    public void executeSyncTask(UUID uuid)
+    {
+        
+        Runnable task = this.syncTasks.remove(uuid);
+        if(null == task)
+        {
+            throw new RuntimeException("Player sync task not found!");
+        }
+        
+        task.run();
+        
     }
 
 	public static TaskManager getManager() {

@@ -16,20 +16,19 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.bukkit.scheduler.BukkitRunnable;
 
-import com.avaje.ebeaninternal.server.lib.sql.DataSourceManager;
-import com.avaje.ebeaninternal.server.lib.sql.DataSourcePool;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.mengcraft.playersql.DataManager;
 import com.mengcraft.playersql.PlayerSQL;
+import com.mengcraft.playersql.TaskManager;
+import com.mengcraft.jdbc.ConnectionHandler;
 import com.mengcraft.playersql.RetryHandler;
-import com.mengcraft.playersql.events.PlayerLoadedEvent;
+import com.mengcraft.playersql.events.DataLoadedEvent;
+import com.mengcraft.playersql.events.PlayerSynchronizedEvent;
 import com.mengcraft.playersql.util.FixedExp;
 import com.mengcraft.playersql.util.ItemUtil;
 
@@ -41,9 +40,8 @@ public class LoadPlayerTask implements Runnable {
     
 	private final UUID uuid;
 
-	private final DataSourcePool pool;
-
 	private final RetryHandler retry;
+	private final TaskManager tm = TaskManager.getManager();
 
 	@Override
 	public void run() {
@@ -51,7 +49,7 @@ public class LoadPlayerTask implements Runnable {
 		    
             while(true)
             {
-                Connection connection = this.pool.getConnection();
+                Connection connection = ConnectionHandler.getConnection("playersql");
                 PreparedStatement sql = connection
                         .prepareStatement("SELECT `Data`, `Online` FROM `PlayerData` WHERE `Player` = ?;");
                 sql.setString(1, this.uuid.toString());
@@ -64,7 +62,6 @@ public class LoadPlayerTask implements Runnable {
                     insert.setString(1, this.uuid.toString());
                     insert.executeUpdate();
                     insert.close();
-                    connection.commit();
                     
                     result.close();
                     sql.close();
@@ -79,7 +76,6 @@ public class LoadPlayerTask implements Runnable {
                             .prepareStatement("UPDATE `PlayerData` SET `Online` = 1 WHERE `Player` = ?;");
                     lock.setString(1, this.uuid.toString());
                     lock.executeUpdate();
-                    connection.commit();
                     lock.close();
                     this.sync(this.uuid,
                             new JsonParser().parse(result.getString(1))
@@ -129,14 +125,20 @@ public class LoadPlayerTask implements Runnable {
         
         // TODO maybe need caching configure
         
-        new BukkitRunnable()
+        @SuppressWarnings("serial")
+        DataLoadedEvent dle = new DataLoadedEvent(uuid, GSON.<HashMap<String, JsonElement>>fromJson(customData, new TypeToken<HashMap<String, JsonElement>>(){}.getType()));
+        Bukkit.getPluginManager().callEvent(dle);
+        
+        Runnable syncTask = new Runnable()
         {
             @Override
             public void run()
             {
+                
                 Player player = Bukkit.getPlayer(uuid);
                 if(null == player)
                     return;
+                
                 if(plugin.getConfig().getBoolean("sync.health"))
                 {
                     player.setHealth(health);
@@ -168,12 +170,14 @@ public class LoadPlayerTask implements Runnable {
                 }
                 
                 @SuppressWarnings("serial")
-                PlayerLoadedEvent ple = new PlayerLoadedEvent(player, GSON.<HashMap<String, JsonElement>>fromJson(customData, new TypeToken<HashMap<String, JsonElement>>(){}.getType()));
+                PlayerSynchronizedEvent pse = new PlayerSynchronizedEvent(player, GSON.<HashMap<String, JsonElement>>fromJson(customData, new TypeToken<HashMap<String, JsonElement>>(){}.getType()));
                 
-                Bukkit.getPluginManager().callEvent(ple);
+                Bukkit.getPluginManager().callEvent(pse);
                 
             }
-        }.runTask(this.plugin);
+        };
+        
+        tm.putSyncTask(uuid, syncTask);
         
     }
     
@@ -212,10 +216,6 @@ public class LoadPlayerTask implements Runnable {
 	public LoadPlayerTask(UUID uuid, PlayerSQL plugin) {
 	    this.plugin = plugin;
 		this.uuid = uuid;
-
-		DataSourceManager manager = DataManager.getDefault().getHandle();
-		this.pool = manager.getDataSource("default");
-
 		this.retry = RetryHandler.getHandler();
 	}
 

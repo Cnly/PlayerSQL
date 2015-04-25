@@ -8,7 +8,7 @@ import org.bukkit.event.HandlerList;
 
 import com.google.gson.JsonElement;
 
-public class PlayerLoadedEvent extends Event
+public class PlayerSynchronizedEvent extends Event
 {
     
     private static final HandlerList handlerList = new HandlerList();
@@ -16,7 +16,7 @@ public class PlayerLoadedEvent extends Event
     private final Player player;
     private HashMap<String, JsonElement> data;
     
-    public PlayerLoadedEvent(Player player, HashMap<String, JsonElement> data)
+    public PlayerSynchronizedEvent(Player player, HashMap<String, JsonElement> data)
     {
         this.player = player;
         this.data = data;

@@ -4,7 +4,10 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+
+import com.mengcraft.playersql.task.LoadPlayerTask;
 
 public class PlayerEvents implements Listener {
 
@@ -17,7 +20,15 @@ public class PlayerEvents implements Listener {
 	    if(AsyncPlayerPreLoginEvent.Result.ALLOWED != e.getLoginResult())
 	        return;
 	    
-	    manager.runLoadTask(e.getUniqueId());
+	    new LoadPlayerTask(e.getUniqueId(), PlayerSQL.getInstance()).run();
+	    
+	}
+	
+	@EventHandler
+	public void onPlayerJoin(PlayerJoinEvent e)
+	{
+	    
+	    this.manager.executeSyncTask(e.getPlayer().getUniqueId());
 	    
 	}
 	
