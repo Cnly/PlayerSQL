@@ -3,6 +3,8 @@ package com.mengcraft.playersql;
 import java.sql.Connection;
 import java.sql.Statement;
 
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import com.avaje.ebean.config.DataSourceConfig;
@@ -16,6 +18,7 @@ public class PlayerSQL extends JavaPlugin {
 
 	@Override
 	public void onEnable() {
+	    
 	    new TaskManager(this);
 		DataSourceConfig config = new DataSourceConfig();
 		config.setDriver("com.mysql.jdbc.Driver");
@@ -39,6 +42,12 @@ public class PlayerSQL extends JavaPlugin {
 			setEnabled(false);
 			getServer().shutdown();
 		}
+		
+		for(Player p : Bukkit.getOnlinePlayers())
+		{
+		    TaskManager.getManager().runLoadTask(p.getUniqueId());
+		}
+		
 	}
 
 	@Override
