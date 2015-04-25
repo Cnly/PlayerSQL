@@ -1,23 +1,20 @@
 package com.mengcraft.playersql.events;
 
-import java.util.HashMap;
-
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 
-import com.google.common.reflect.TypeToken;
-import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.mengcraft.playersql.PlayerZQL;
 
 public class PlayerSavingEvent extends Event
 {
     
     private static final HandlerList handlerList = new HandlerList();
     
+    private final PlayerZQL main = PlayerZQL.getInstance();
     private final Player player;
-    private final HashMap<String, JsonElement> data = new HashMap<>();
     
     public PlayerSavingEvent(Player player)
     {
@@ -25,14 +22,25 @@ public class PlayerSavingEvent extends Event
         this.player = player;
     }
     
+    /**
+     * Sets custom data
+     * @param key The key
+     * @param value The value
+     * @return previous associated data if present
+     */
     public JsonElement setData(String key, JsonElement value)
     {
-        return this.data.put(key, value);
+        return this.main.setCustomData(player.getUniqueId(), key, value);
     }
     
+    /**
+     * Gets the custom data associated with the given key
+     * @param key The key
+     * @return Matching data
+     */
     public JsonElement getData(String key)
     {
-        return this.data.get(key);
+        return this.main.getCustomData(player.getUniqueId(), key);
     }
     
     public Player getPlayer()
@@ -40,10 +48,10 @@ public class PlayerSavingEvent extends Event
         return player;
     }
 
-    @SuppressWarnings("serial")
+    @SuppressWarnings("deprecation")
     public JsonObject getAllData()
     {
-        return (JsonObject)new Gson().toJsonTree(this.data, new TypeToken<HashMap<String, JsonElement>>(){}.getType());
+        return main.getAllCustomData(player.getUniqueId());
     }
     
     @Override

@@ -1,5 +1,4 @@
-main: com.mengcraft.playersql.PlayerSQL
+main: com.mengcraft.playersql.PlayerZQL
 name: PlayerZQL
 version: ${project.version}
-website: http://www.spigotmc.org/resources/playersql.552/
 author: [caoli5288, Cnly]

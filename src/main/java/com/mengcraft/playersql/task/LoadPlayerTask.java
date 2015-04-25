@@ -23,11 +23,12 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.mengcraft.playersql.PlayerSQL;
+import com.mengcraft.playersql.PlayerZQL;
 import com.mengcraft.playersql.TaskManager;
 import com.mengcraft.jdbc.ConnectionHandler;
 import com.mengcraft.playersql.RetryHandler;
 import com.mengcraft.playersql.events.DataLoadedEvent;
+import com.mengcraft.playersql.events.NewPlayerLoginEvent;
 import com.mengcraft.playersql.events.PlayerSynchronizedEvent;
 import com.mengcraft.playersql.util.FixedExp;
 import com.mengcraft.playersql.util.ItemUtil;
@@ -36,7 +37,7 @@ public class LoadPlayerTask implements Runnable {
     
     private static final Gson GSON = new Gson();
     
-    private final PlayerSQL plugin;
+    private final PlayerZQL plugin;
     
 	private final UUID uuid;
 
@@ -66,6 +67,15 @@ public class LoadPlayerTask implements Runnable {
                     result.close();
                     sql.close();
                     connection.close();
+                    
+                    Bukkit.getScheduler().runTask(this.plugin, new Runnable(){
+                        @Override
+                        public void run()
+                        {
+                            NewPlayerLoginEvent nple = new NewPlayerLoginEvent(uuid);
+                            Bukkit.getPluginManager().callEvent(nple);
+                        }
+                    });
                     
                     break;
                 }
@@ -109,8 +119,10 @@ public class LoadPlayerTask implements Runnable {
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
+		
 	}
 
+    @SuppressWarnings({"serial", "deprecation"})
     private void sync(final UUID uuid, JsonArray value)
     {
         final double health = value.get(0).getAsDouble();
@@ -125,9 +137,16 @@ public class LoadPlayerTask implements Runnable {
         
         // TODO maybe need caching configure
         
-        @SuppressWarnings("serial")
-        DataLoadedEvent dle = new DataLoadedEvent(uuid, GSON.<HashMap<String, JsonElement>>fromJson(customData, new TypeToken<HashMap<String, JsonElement>>(){}.getType()));
-        Bukkit.getPluginManager().callEvent(dle);
+        LoadPlayerTask.this.plugin.setCustomData(uuid, GSON.<HashMap<String, JsonElement>>fromJson(customData, new TypeToken<HashMap<String, JsonElement>>(){}.getType()));
+        Bukkit.getScheduler().runTask(this.plugin, new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                DataLoadedEvent dle = new DataLoadedEvent(uuid);
+                Bukkit.getPluginManager().callEvent(dle);
+            }
+        });
         
         Runnable syncTask = new Runnable()
         {
@@ -169,15 +188,22 @@ public class LoadPlayerTask implements Runnable {
                     player.addPotionEffects(effects);
                 }
                 
-                @SuppressWarnings("serial")
-                PlayerSynchronizedEvent pse = new PlayerSynchronizedEvent(player, GSON.<HashMap<String, JsonElement>>fromJson(customData, new TypeToken<HashMap<String, JsonElement>>(){}.getType()));
+                PlayerSynchronizedEvent pse = new PlayerSynchronizedEvent(player);
                 
                 Bukkit.getPluginManager().callEvent(pse);
                 
             }
         };
         
-        tm.putSyncTask(uuid, syncTask);
+        // Run the task directly in case of reload
+        if(null == Bukkit.getPlayer(uuid))
+        {
+            tm.putSyncTask(uuid, syncTask);
+        }
+        else
+        {
+            syncTask.run();
+        }
         
     }
     
@@ -213,7 +239,7 @@ public class LoadPlayerTask implements Runnable {
         return stackList.toArray(new ItemStack[array.size()]);
     }
 
-	public LoadPlayerTask(UUID uuid, PlayerSQL plugin) {
+	public LoadPlayerTask(UUID uuid, PlayerZQL plugin) {
 	    this.plugin = plugin;
 		this.uuid = uuid;
 		this.retry = RetryHandler.getHandler();

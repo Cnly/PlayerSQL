@@ -31,7 +31,7 @@ public class TaskManager {
 	
 	private final ExecutorService pool = Executors.newCachedThreadPool();
 	private final ItemUtil util = ItemUtil.getUtil();
-	private final PlayerSQL plugin;
+	private final PlayerZQL plugin;
 	
 	private HashMap<UUID, Runnable> syncTasks = new HashMap<>();
 	
@@ -116,24 +116,25 @@ public class TaskManager {
         this.syncTasks.put(uuid, task);
     }
     
-    public void executeSyncTask(UUID uuid)
+    public boolean executeSyncingTask(UUID uuid)
     {
         
         Runnable task = this.syncTasks.remove(uuid);
         if(null == task)
         {
-            throw new RuntimeException("Player sync task not found!");
+            return false;
         }
         
         task.run();
         
+        return true;
     }
 
 	public static TaskManager getManager() {
 		return manager;
 	}
 
-    public TaskManager(PlayerSQL plugin)
+    public TaskManager(PlayerZQL plugin)
     {
         this.plugin = plugin;
         manager = this;
