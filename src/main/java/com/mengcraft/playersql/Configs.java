@@ -25,7 +25,7 @@ public class Configs {
     public static final boolean DEBUG;
 
     static {
-        FILE = new File("plugins/PlayerSQL/config.yml");
+        FILE = new File("plugins/PlayerZQL/config.yml");
         YamlConfiguration yml = YamlConfiguration.loadConfiguration(FILE);
         SYN_HEAL = yml.getBoolean("sync.health", true);
         SYN_CEST = yml.getBoolean("sync.chest", true);
