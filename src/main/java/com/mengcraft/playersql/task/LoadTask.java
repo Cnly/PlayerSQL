@@ -66,36 +66,15 @@ public class LoadTask implements Runnable {
             ResultSet result = select.executeQuery();
             if (!result.next()) { // Check if the player exists in the database
                 createPlayer(c);
-                if(null == nbme)
-                {
-                    playerManager.getDataMap().put(uuid, PlayerManager.FLAG_EMPTY);
-                }
-                else
-                {
-                    nbme.putData(uuid, PlayerManager.FLAG_EMPTY);
-                }
+                processData(uuid, PlayerManager.FLAG_EMPTY, nbme);
             } else if (result.getInt(2) == 0) { // Check if the player is offline
                 setAsOnline(c);
-                if(null == nbme)
-                {
-                    playerManager.getDataMap().put(uuid, result.getString(1));
-                }
-                else
-                {
-                    nbme.putData(uuid, result.getString(1));
-                }
+                processData(uuid, result.getString(1), nbme);
             } else if (result.getLong(3) != 0 && minutesPastSince(result.getLong(3)) > 5) {
                 // Check if it's more than 5 minutes since the player's last online time.
                 // If yes, which means the previous server was stopped unexpectedly, then load the data forcibly.
                 String data = result.getString(1);
-                if(null == nbme)
-                {
-                    playerManager.getDataMap().put(uuid, data != null ? data : PlayerManager.FLAG_EMPTY);
-                }
-                else
-                {
-                    nbme.putData(uuid, data != null ? data : PlayerManager.FLAG_EMPTY);
-                }
+                processData(uuid, data != null ? data : PlayerManager.FLAG_EMPTY, nbme);
             } else {
                 result.close();
                 select.close();
@@ -109,6 +88,18 @@ public class LoadTask implements Runnable {
         } catch (SQLException e) {
             e.printStackTrace();
             return false;
+        }
+    }
+    
+    private void processData(UUID uuid, String data, NonBungeeModeEvents nbme)
+    {
+        if(null == nbme)
+        {
+            playerManager.getDataMap().put(uuid, data);
+        }
+        else
+        {
+            nbme.putData(uuid, data);
         }
     }
 
