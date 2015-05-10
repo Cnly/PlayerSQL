@@ -3,11 +3,14 @@ package com.mengcraft.playersql;
 import java.sql.Connection;
 import java.sql.Statement;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.event.HandlerList;
+import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitScheduler;
 
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
@@ -15,80 +18,95 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mengcraft.jdbc.ConnectionFactory;
 import com.mengcraft.jdbc.ConnectionHandler;
-import com.mengcraft.playersql.task.LoadPlayerTask;
-import com.mengcraft.playersql.task.TimerSaveTask;
+import com.mengcraft.jdbc.ConnectionManager;
+import com.mengcraft.playersql.task.LoadTask;
+import com.mengcraft.playersql.task.SaveTask;
+import com.mengcraft.playersql.task.TimerCheckTask;
 
 public class PlayerZQL extends JavaPlugin {
     
     private static PlayerZQL instance;
     
     private final HashMap<UUID, HashMap<String, JsonElement>> customData = new HashMap<>();
+    
+    @Override
+    public void onEnable() {
+        
+        instance = this;
+        
+        saveResource("config.yml", false);
+        ConnectionFactory factory = new ConnectionFactory(
+                getConfig().getString("plugin.database"),
+                getConfig().getString("plugin.username"),
+                getConfig().getString("plugin.password"));
+        ConnectionManager manager = ConnectionManager.DEFAULT;
+        ConnectionHandler handler = manager.getHandler("playersql", factory);
+        try {
+            Connection connection = handler.getConnection();
+            String sql = "CREATE TABLE IF NOT EXISTS PlayerData("
+                    + "`Id` int NOT NULL AUTO_INCREMENT, "
+                    + "`Player` text NULL, "
+                    + "`Data` text NULL, "
+                    + "`Online` int NULL, "
+                    + "`Last` bigint NULL, "
+                    + "PRIMARY KEY(`Id`));";
+            Statement action = connection.createStatement();
+            action.executeUpdate(sql);
+            action.close();
+            handler.release(connection);
+            scheduler().runTask(this, new MetricsTask(this));
+            scheduler().runTaskTimer(this, new TimerCheckTask(this), 0, 0);
+            if(Configs.BUNGEE)
+            {
+                register(new Events(this), this);
+            }
+            else
+            {
+                register(new NonBungeeModeEvents(this), this);
+            }
+        } catch (Exception e) {
+            getLogger().warning("Unable to connect to database.");
+            setEnabled(false);
+        }
+        
+        PlayerManager pm = PlayerManager.DEFAULT;
+        for(Player p : getServer().getOnlinePlayers())
+        {
+            UUID uuid = p.getUniqueId();
+            pm.lock(uuid);
+            new LoadTask(uuid, this).run();
+        }
+        
+    }
 
-	@Override
-	public void onEnable() {
-	    
-	    instance = this;
-	    
-	    new TaskManager(this);
-		saveDefaultConfig();
-		
-		ConnectionFactory factory = new ConnectionFactory(
-				getConfig().getString("plugin.database"),
-				getConfig().getString("plugin.username"),
-				getConfig().getString("plugin.password"));
-		ConnectionHandler handler = new ConnectionHandler(factory, "playersql");
-		
-		try {
-			Connection connection = handler.getConnection();
-			String sql = "CREATE TABLE IF NOT EXISTS PlayerData("
-					+ "`Id` int NOT NULL AUTO_INCREMENT, "
-					+ "`Player` text NULL, "
-					+ "`Data` text NULL, "
-					+ "`Online` int NULL, "
-					+ "`Last` bigint NULL, "
-					+ "PRIMARY KEY(`Id`));";
-			Statement action = connection.createStatement();
-			action.executeUpdate(sql);
-			action.close();
-			getServer().getPluginManager().registerEvents(new PlayerEvents(), this);
-			getServer().getScheduler().runTaskTimer(this, new TimerSaveTask(this), 6000, 6000);
-
-		} catch (Exception e) {
-			getLogger().warning("Unable to connect to database.");
-			e.printStackTrace();
-			getLogger().warning("Shutting down server...");
-			setEnabled(false);
-			getServer().shutdown();
-		}
-		
-		for(Player p : Bukkit.getOnlinePlayers())
-		{
-		    new LoadPlayerTask(p.getUniqueId(), PlayerZQL.getInstance()).run();
-		}
-		
-	}
-
-	@Override
-	public void onDisable() {
-		try {
-			TaskManager.getManager().runSaveAll(this, 0);
-		} catch (Exception e) {
-			getLogger().warning("Unable to connect to database.");
-		    e.printStackTrace();
-			getLogger().warning("Can not link to database.");
-		}
-	}
-	
+    @Override
+    public void onDisable() {
+        HandlerList.unregisterAll(this);
+        
+        SyncManager manager = SyncManager.DEFAULT;
+        PlayerManager compond = PlayerManager.DEFAULT;
+        Map<UUID, String> map = new HashMap<>();
+        for (Player p : getServer().getOnlinePlayers()) {
+            UUID uuid = p.getUniqueId();
+            if (!compond.isLocked(uuid))
+                map.put(uuid, manager.getData(p));
+        }
+        if (map.size() != 0) {
+            new SaveTask(map, true).run();
+        }
+        ConnectionManager.DEFAULT.shutdown();
+    }
+    
     /**
      * This method should be only used by PlayerZQL itself.<br/>
      * Using this method may override custom data from other plugins.
      */
-	@Deprecated
-	public void setCustomData(UUID uuid, HashMap<String, JsonElement> data)
-	{
-	    this.customData.put(uuid, data);
-	}
-	
+    @Deprecated
+    public void setCustomData(UUID uuid, HashMap<String, JsonElement> data)
+    {
+        this.customData.put(uuid, data);
+    }
+    
     /**
      * Sets custom data
      * @param uuid The UUID of the player
@@ -144,12 +162,36 @@ public class PlayerZQL extends JavaPlugin {
     @SuppressWarnings("serial")
     public JsonObject getAllCustomData(UUID uuid)
     {
-        return (JsonObject)new Gson().toJsonTree(this.customData.get(uuid), new TypeToken<HashMap<String, JsonElement>>(){}.getType());
+        HashMap<String, JsonElement> singlePlayerMap = this.customData.get(uuid);
+        if(null == singlePlayerMap)
+        {
+            return new JsonObject();
+        }
+        else
+        {
+            return (JsonObject)new Gson().toJsonTree(this.customData.get(uuid), new TypeToken<HashMap<String, JsonElement>>(){}.getType());
+        }
     }
-
+    
     public static PlayerZQL getInstance()
     {
         return instance;
+    }
+
+    public BukkitScheduler scheduler() {
+        return getServer().getScheduler();
+    }
+
+    private void register(Listener listener, PlayerZQL main) {
+        getServer().getPluginManager().registerEvents(listener, main);
+    }
+
+    public void info(String string) {
+        getLogger().info(string);
+    }
+
+    public void warn(String string) {
+        getLogger().warning(string);
     }
 
 }

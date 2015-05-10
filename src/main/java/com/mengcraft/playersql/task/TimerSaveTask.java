@@ -1,21 +1,32 @@
 package com.mengcraft.playersql.task;
 
-import org.bukkit.plugin.Plugin;
+import java.util.UUID;
 
-import com.mengcraft.playersql.TaskManager;
+import org.bukkit.Server;
+import org.bukkit.entity.Player;
+
+import com.mengcraft.playersql.PlayerManager;
+import com.mengcraft.playersql.SyncManager;
 
 public class TimerSaveTask implements Runnable {
 
-	private final TaskManager manager = TaskManager.getManager();
-	private final Plugin plugin;
+    private final Server server;
+    private final UUID uuid;
 
-	@Override
-	public void run() {
-		this.manager.runSaveAll(plugin, 1);
-	}
+    public TimerSaveTask(Server server, UUID uuid) {
+        this.server = server;
+        this.uuid = uuid;
+    }
 
-	public TimerSaveTask(Plugin plugin) {
-		this.plugin = plugin;
-	}
+    @Override
+    public void run() {
+        Player p = server.getPlayer(uuid);
+        if (p != null && p.isOnline()) {
+            SyncManager.DEFAULT.save(p, false);
+        } else {
+            int id = PlayerManager.DEFAULT.getSaveTaskIdMap().remove(uuid);
+            server.getScheduler().cancelTask(id);
+        }
+    }
 
 }

@@ -2,6 +2,11 @@ plugin:
   database: jdbc:mysql://127.0.0.1:3306/database
   username: username
   password: password
+  bungee: true
+  # if 'bungee' is set to true, the plugin will load the data after
+  # the player has joined the server, instead of loading on
+  # player's pre-login.
+  debug: false
 
 sync:
   health: true
@@ -11,4 +16,5 @@ sync:
   chest: true
   potion: true
 
-version: 1.8.0
+messages:
+  dataLoading: "&aPlease wait while your data is being loaded :)"
