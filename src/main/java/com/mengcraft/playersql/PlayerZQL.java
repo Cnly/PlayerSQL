@@ -94,7 +94,7 @@ public class PlayerZQL extends JavaPlugin {
             }
         }
         if (list.size() > 0) {
-            sm.save(list, true);
+            sm.blockingSave(list, true);
         }
         ConnectionManager.DEFAULT.shutdown();
     }

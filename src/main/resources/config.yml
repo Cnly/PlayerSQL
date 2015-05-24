@@ -18,6 +18,13 @@ sync:
   inventory: true
   chest: true
   potion: true
+<<<<<<< HEAD
+=======
+  # The delay before read database. If player
+  # - "Your data is locked, login later"
+  # too often, grow this value. Values by tick.
+  delay: 30
+>>>>>>> upstream/master
 
 messages:
   dataLoading: "&aPlease wait while your data is being loaded :)"
