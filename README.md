@@ -1,3 +1,22 @@
+# PlayerZQL
+
+I know it's a fork of caoli5288/PlayerSQL. But what are the differences between them?
+
+PlayerZQL mainly has:
+* Events and APIs for YOUR plugin to save YOUR data, into the database.
+* Bungee/Non-Bungee modes, switchable. Non-Bungee mode is a mode which loads players' data on their     AsyncPlayerPreLoginEvent and provides better experience
+* Better symbol names, comments, etc. :P
+
+---
+我知道这是个caoli5288/PlayerSQL的fork，但是它们有什么区别呢？
+
+
+PlayerZQL主要有：
+
+* 事件及API，供你把你插件中的数据存入数据库中
+* Bungee/非Bungee模式可选。非Bungee模式可以在玩家的AsyncPlayerPreLoginEvent中读取数据，提供更好的用户体验。
+* 更好的符号名称、注释等 :P
+
 PlayerSQL
 =========
 允许你通过这个插件在不同的Minecraft服务器之间同步玩家数据。包括：
