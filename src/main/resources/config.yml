@@ -6,6 +6,9 @@ plugin:
   # if 'bungee' is set to true, the plugin will load the data after
   # the player has joined the server, instead of loading on
   # player's pre-login.
+  delayInTicks: 30
+  # The delay before reading database. If players are often kicked because
+  # of locked data, try increasing this value.
   debug: false
 
 sync:
@@ -18,3 +21,4 @@ sync:
 
 messages:
   dataLoading: "&aPlease wait while your data is being loaded :)"
+  dataSynchronized: "&aEnjoy! All your data has been synchronized."

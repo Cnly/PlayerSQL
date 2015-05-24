@@ -16,6 +16,7 @@ public class Configs {
     public static final boolean SYN_FOOD;
     
     public static final boolean BUNGEE;
+    public static final int LOAD_DELAY;
     
     public static final String MSG_LOADING;
 
@@ -35,6 +36,7 @@ public class Configs {
         SYN_FOOD = yml.getBoolean("sync.food", true);
         BUNGEE = yml.getBoolean("plugin.bungee", true);
         MSG_LOADING = ChatColor.translateAlternateColorCodes('&', yml.getString("messages.dataLoading", "&aPlease wait while your data is being loaded :)"));
+        LOAD_DELAY = yml.getInt("plugin.delayInTicks", 30);
         DEBUG = yml.getBoolean("plugin.debug", false);
         CONF = yml;
     }

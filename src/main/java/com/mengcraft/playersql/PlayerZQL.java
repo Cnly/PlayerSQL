@@ -2,8 +2,9 @@ package com.mengcraft.playersql;
 
 import java.sql.Connection;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
 import java.util.UUID;
 
 import org.bukkit.entity.Player;
@@ -19,8 +20,8 @@ import com.google.gson.JsonObject;
 import com.mengcraft.jdbc.ConnectionFactory;
 import com.mengcraft.jdbc.ConnectionHandler;
 import com.mengcraft.jdbc.ConnectionManager;
+import com.mengcraft.playersql.SyncManager.State;
 import com.mengcraft.playersql.task.LoadTask;
-import com.mengcraft.playersql.task.SaveTask;
 import com.mengcraft.playersql.task.TimerCheckTask;
 
 public class PlayerZQL extends JavaPlugin {
@@ -73,7 +74,7 @@ public class PlayerZQL extends JavaPlugin {
         for(Player p : getServer().getOnlinePlayers())
         {
             UUID uuid = p.getUniqueId();
-            pm.lock(uuid);
+            pm.setState(uuid, State.JOIN_WAIT);
             new LoadTask(uuid, this).run();
         }
         
@@ -83,16 +84,17 @@ public class PlayerZQL extends JavaPlugin {
     public void onDisable() {
         HandlerList.unregisterAll(this);
         
-        SyncManager manager = SyncManager.DEFAULT;
-        PlayerManager compond = PlayerManager.DEFAULT;
-        Map<UUID, String> map = new HashMap<>();
+        SyncManager sm = SyncManager.DEFAULT;
+        PlayerManager pm = PlayerManager.DEFAULT;
+        List<Player> list = new ArrayList<>();
         for (Player p : getServer().getOnlinePlayers()) {
             UUID uuid = p.getUniqueId();
-            if (!compond.isLocked(uuid))
-                map.put(uuid, manager.getData(p));
+            if (pm.getState(uuid) == null) {
+                list.add(p);
+            }
         }
-        if (map.size() != 0) {
-            new SaveTask(map, true).run();
+        if (list.size() > 0) {
+            sm.save(list, true);
         }
         ConnectionManager.DEFAULT.shutdown();
     }

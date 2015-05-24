@@ -3,7 +3,9 @@ package com.mengcraft.playersql;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.SynchronousQueue;
@@ -12,6 +14,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.Server;
 import org.bukkit.craftbukkit.v1_8_R2.inventory.CraftItemStack;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -44,6 +47,7 @@ public class SyncManager {
     private final ExecutorService service;
     private final JsonParser parser = new JsonParser();
     private final PlayerManager playerManager = PlayerManager.DEFAULT;
+    private final Server server = Bukkit.getServer();
 
     private SyncManager() {
         this.service = new ThreadPoolExecutor(2, Integer.MAX_VALUE,
@@ -55,34 +59,47 @@ public class SyncManager {
 
     public void save(Player player, boolean unlock) {
         if (player == null) {
-            throw new NullPointerException();
+            throw new NullPointerException("#11 Can not save a null player.");
         }
         String data = getData(player);
         UUID uuid = player.getUniqueId();
         service.execute(new SaveTask(uuid, data, unlock));
     }
-    
-    public void load(Player player) {
-        if (player == null || !player.isOnline()) {
-            throw new NullPointerException();
+
+    public void save(List<Player> list, boolean unlock) {
+        Map<UUID, String> map = new LinkedHashMap<>();
+        for (Player p : list) {
+            map.put(p.getUniqueId(), getData(p));
         }
-        service.execute(new LoadTask(player.getUniqueId(), main));
+        service.execute(new SaveTask(map, unlock));
     }
 
-    public void load(final Player p, String value) {
-        UUID key = p.getUniqueId();
-        if (p.isOnline()) {
+    public void load(Player player) {
+        if (player == null) {
+            throw new NullPointerException("Player can't be null!");
+        } else if (!player.isOnline()) {
+            // Player has gone
+            playerManager.setState(player.getUniqueId(), null);
+            return;
+        } else {
+            service.execute(new LoadTask(player.getUniqueId(), main));
+        }
+    }
+
+    public void sync(UUID uuid, String value) {
+        Player player = server.getPlayer(uuid);
+        if (player != null && player.isOnline()) {
             JsonArray array = parser.parse(value).getAsJsonArray();
-            load(p, array);
-            playerManager.unlock(key);
-            playerManager.getDataMap().remove(key);
+            load(player, array);
+            playerManager.setState(uuid, null);
+            playerManager.getDataMap().remove(uuid);
         } else {
             /*
-             * Player is null(may be impossible) or offline here
-             * but the player's data on the database has been locked. Perform an unlock task.
-             * This is an infrequent case.
+             * Player is null or offline here but the player's data on the
+             * database has been locked. Perform an unlock task. This is an
+             * infrequent case.
              */
-            service.execute(new UnlockTask(key));
+            service.execute(new UnlockTask(uuid));
         }
     }
 
@@ -218,5 +235,11 @@ public class SyncManager {
 
         return result;
     }
-    
+
+    public enum State {
+        CONN_DONE,
+        JOIN_WAIT,
+        JOIN_DONE,
+    }
+
 }

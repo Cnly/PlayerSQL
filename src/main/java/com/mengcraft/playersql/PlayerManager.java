@@ -1,15 +1,14 @@
 package com.mengcraft.playersql;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.mengcraft.playersql.SyncManager.State;
 import com.mengcraft.playersql.task.UnlockTask;
 
 public class PlayerManager {
@@ -32,28 +31,25 @@ public class PlayerManager {
         MESSAGE_KICK = "Your data is locked; login later.";
     }
 
-    private final List<UUID> lockedPlayers = new ArrayList<>();
+    private final Map<UUID, State>  playerStateMap = new ConcurrentHashMap<>();
     private final Map<UUID, String> dataMap = new ConcurrentHashMap<>();
     private final Map<UUID, Integer> timerSaveTaskIds = new HashMap<>();
-
-    public boolean isLocked(UUID uuid) {
-        return lockedPlayers.contains(uuid);
+    
+    public void setState(UUID uuid, State s)
+    {
+        if(null != s)
+        {
+            this.playerStateMap.put(uuid, s);
+        }
+        else
+        {
+            this.playerStateMap.remove(uuid);
+        }
     }
     
-    /**
-     * Locks a player locally.
-     * @param uuid Player's UUID
-     */
-    public void lock(UUID uuid) {
-        lockedPlayers.add(uuid);
-    }
-
-    /**
-     * Unlocks a player locally.
-     * @param uuid Player's UUID
-     */
-    public void unlock(UUID uuid) {
-        lockedPlayers.remove(uuid);
+    public State getState(UUID uuid)
+    {
+        return this.playerStateMap.get(uuid);
     }
 
     public Map<UUID, String> getDataMap() {

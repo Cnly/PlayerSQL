@@ -12,6 +12,7 @@ import com.mengcraft.jdbc.ConnectionManager;
 import com.mengcraft.playersql.NonBungeeModeEvents;
 import com.mengcraft.playersql.PlayerManager;
 import com.mengcraft.playersql.PlayerZQL;
+import com.mengcraft.playersql.SyncManager.State;
 
 public class LoadTask implements Runnable {
     
@@ -22,8 +23,8 @@ public class LoadTask implements Runnable {
     static {
         SELECT = "SELECT `Data`,`Online`,`Last` FROM `PlayerData` " +
                 "WHERE `Player` = ?";
-        INSERT = "INSERT INTO `PlayerData`(`Player`, `Online`) " +
-                "VALUES(?, 1)";
+        INSERT = "INSERT INTO `PlayerData`(`Player`,`Online`,`LAST`) " +
+                "VALUES(?,1,?)";
         UPDATE = "UPDATE `PlayerData` SET `Online` = 1 " +
                 "WHERE `Player` = ?";
     }
@@ -61,8 +62,10 @@ public class LoadTask implements Runnable {
     {
         try {
             Connection c = connectionManager.getConnection("playersql");
+            
             PreparedStatement select = c.prepareStatement(SELECT);
             select.setString(1, uuid.toString());
+
             ResultSet result = select.executeQuery();
             if (!result.next()) { // Check if the player exists in the database
                 createPlayer(c);
@@ -93,6 +96,7 @@ public class LoadTask implements Runnable {
     
     private void processData(UUID uuid, String data, NonBungeeModeEvents nbme)
     {
+        playerManager.setState(uuid, State.JOIN_DONE);
         if(null == nbme)
         {
             playerManager.getDataMap().put(uuid, data);
@@ -133,6 +137,7 @@ public class LoadTask implements Runnable {
         try {
             PreparedStatement insert = c.prepareStatement(INSERT);
             insert.setString(1, uuid.toString());
+            insert.setLong(2, System.currentTimeMillis());
             insert.executeUpdate();
             insert.close();
         } catch (SQLException e) {

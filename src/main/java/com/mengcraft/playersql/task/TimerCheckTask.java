@@ -7,13 +7,13 @@ import java.util.UUID;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Server;
-import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitScheduler;
 
 import com.mengcraft.playersql.Configs;
 import com.mengcraft.playersql.PlayerManager;
 import com.mengcraft.playersql.PlayerZQL;
 import com.mengcraft.playersql.SyncManager;
+import com.mengcraft.playersql.SyncManager.State;
 import com.mengcraft.playersql.events.NewPlayerJoinEvent;
 
 public class TimerCheckTask implements Runnable {
@@ -42,12 +42,14 @@ public class TimerCheckTask implements Runnable {
         Set<Entry<UUID, String>> dataEntries = playerManager.getDataEntries();
         for (Entry<UUID, String> e : dataEntries) {
             UUID uuid = e.getKey();
+            if(playerManager.getState(uuid) != State.JOIN_DONE) continue;
+            
             String data = e.getValue();
             if (data == PlayerManager.FLAG_EMPTY) {
                 setupNewPlayer(uuid);
             } else if (data == PlayerManager.FLAG_EXCEPTION) {
                 // This is an infrequent case where a player is 'disappeared' after joining the server.
-                playerManager.unlock(uuid);
+                playerManager.setState(uuid, null);
             } else {
                 setupPlayer(uuid, data);
             }
@@ -55,7 +57,8 @@ public class TimerCheckTask implements Runnable {
     }
 
     private void setupNewPlayer(UUID uuid) {
-        playerManager.unlock(uuid);
+        playerManager.setState(uuid, null);
+        playerManager.getDataMap().remove(uuid);
         scheduleTask(uuid);
         NewPlayerJoinEvent npje = new NewPlayerJoinEvent(Bukkit.getPlayer(uuid));
         Bukkit.getPluginManager().callEvent(npje);
@@ -65,11 +68,12 @@ public class TimerCheckTask implements Runnable {
     }
 
     private void setupPlayer(UUID uuid, String data) {
-        Player p = server.getPlayer(uuid);
-        syncManager.load(p, data);
+        playerManager.setState(uuid, null);
+        playerManager.getDataMap().remove(uuid);
+        syncManager.sync(uuid, data);
         scheduleTask(uuid);
         if (DEBUG) {
-            main.info("#1 Loaded data for " + uuid);
+            main.info("#1 Synchronized data for " + uuid);
         }
     }
 
@@ -85,7 +89,7 @@ public class TimerCheckTask implements Runnable {
         int id = scheduleTask(runnable, 3600, 3600);
         playerManager.getSaveTaskIdMap().put(uuid, id);
         if (DEBUG) {
-            main.info("#4 Ran a timer task for " + uuid);
+            main.info("#4 Started a timer task for " + uuid);
         }
     }
 

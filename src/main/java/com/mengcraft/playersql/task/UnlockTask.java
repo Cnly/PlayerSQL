@@ -34,6 +34,7 @@ public class UnlockTask implements Runnable {
             unlock.close();
             ConnectionManager.DEFAULT.release("playersql", c);
             PlayerManager.DEFAULT.getDataMap().put(uuid, PlayerManager.FLAG_EXCEPTION);
+            PlayerManager.DEFAULT.setState(uuid, null);
         } catch (SQLException e) {
             e.printStackTrace();
         }

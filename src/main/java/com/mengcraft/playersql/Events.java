@@ -13,6 +13,8 @@ import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.player.PlayerLoginEvent.Result;
 import org.bukkit.event.player.PlayerQuitEvent;
 
+import com.mengcraft.playersql.SyncManager.State;
+
 public class Events implements Listener {
 
     private final SyncManager syncManager = SyncManager.DEFAULT;
@@ -26,40 +28,42 @@ public class Events implements Listener {
     @EventHandler
     public void handle(PlayerLoginEvent event) {
         UUID uuid = event.getPlayer().getUniqueId();
-        if (playerManager.isLocked(uuid)) {
+        State state = playerManager.getState(uuid);
+        if (state != null && state != State.CONN_DONE) {
             event.setResult(Result.KICK_OTHER);
             event.setKickMessage(PlayerManager.MESSAGE_KICK);
         } else if (event.getResult() == Result.ALLOWED) {
-            playerManager.lock(event.getPlayer().getUniqueId());
+            playerManager.setState(uuid, State.CONN_DONE);
         }
     }
 
     @EventHandler
     public void handle(final PlayerJoinEvent event) {
         event.getPlayer().sendMessage(Configs.MSG_LOADING);
+        playerManager.setState(event.getPlayer().getUniqueId(), State.JOIN_WAIT);
         Runnable task = new Runnable() {
             @Override
             public void run() {
                 syncManager.load(event.getPlayer());
             }
         };
-        main.scheduler().runTaskLater(main, task, 30);
+        main.scheduler().runTaskLater(main, task, Configs.LOAD_DELAY);
     }
 
     @EventHandler
     public void handle(PlayerQuitEvent event) {
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
-        if (!playerManager.isLocked(uuid)) {
+        if (playerManager.getState(uuid) == null) {
             syncManager.save(player, true);
         }
-        playerManager.unlock(uuid);
     }
 
     @EventHandler
     public void handle(EntityDamageEvent event) {
+        if(!(event.getEntity() instanceof Player)) return;
         UUID uuid = event.getEntity().getUniqueId();
-        if (playerManager.isLocked(uuid)) {
+        if (playerManager.getState(uuid) != null) {
             event.setCancelled(true);
         }
     }
@@ -67,7 +71,7 @@ public class Events implements Listener {
     @EventHandler
     public void handle(PlayerDropItemEvent event) {
         UUID uuid = event.getPlayer().getUniqueId();
-        if (playerManager.isLocked(uuid)) {
+        if (playerManager.getState(uuid) != null) {
             event.setCancelled(true);
         }
     }
@@ -75,7 +79,7 @@ public class Events implements Listener {
     @EventHandler
     public void handle(PlayerInteractEvent event) {
         UUID uuid = event.getPlayer().getUniqueId();
-        if (playerManager.isLocked(uuid)) {
+        if (playerManager.getState(uuid) != null) {
             event.setCancelled(true);
         }
     }

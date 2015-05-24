@@ -15,6 +15,7 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
+import com.mengcraft.playersql.SyncManager.State;
 import com.mengcraft.playersql.task.LoadTask;
 
 public class NonBungeeModeEvents implements Listener {
@@ -36,18 +37,23 @@ public class NonBungeeModeEvents implements Listener {
 	    if(AsyncPlayerPreLoginEvent.Result.ALLOWED != e.getLoginResult())
 	        return;
 	    
-	    if(this.playerManager.isLocked(e.getUniqueId()))
-	    {
+	    UUID uuid = e.getUniqueId();
+        State state = playerManager.getState(uuid);
+        if (state != null && state != State.CONN_DONE)
+        {
 	           e.setLoginResult(Result.KICK_OTHER);
 	           e.setKickMessage(PlayerManager.MESSAGE_KICK);
 	           return;
 	    }
+        
+        playerManager.setState(uuid, State.CONN_DONE);
 	    
 	    boolean success = new LoadTask(e.getUniqueId(), main).doLoad(this);
 	    if(!success)
 	    {
 	        e.setLoginResult(Result.KICK_OTHER);
 	        e.setKickMessage(PlayerManager.MESSAGE_KICK);
+	        playerManager.setState(uuid, null);
 	    }
 	    
 	}
@@ -55,9 +61,8 @@ public class NonBungeeModeEvents implements Listener {
 	@EventHandler
 	public void onPlayerJoin(final PlayerJoinEvent e)
 	{
-	    
 	    UUID uuid = e.getPlayer().getUniqueId();
-	    this.playerManager.lock(uuid);
+	    this.playerManager.setState(uuid, State.JOIN_DONE);
 	    playerManager.getDataMap().put(uuid, this.dataMap.get(uuid));
 	    
 	}
@@ -66,15 +71,16 @@ public class NonBungeeModeEvents implements Listener {
     public void handle(PlayerQuitEvent event) {
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
-        if (!playerManager.isLocked(uuid)) {
+        if (playerManager.getState(uuid) == null) {
             syncManager.save(player, true);
         }
     }
 
     @EventHandler
     public void handle(EntityDamageEvent event) {
+        if(!(event.getEntity() instanceof Player)) return;
         UUID uuid = event.getEntity().getUniqueId();
-        if (playerManager.isLocked(uuid)) {
+        if (playerManager.getState(uuid) != null) {
             event.setCancelled(true);
         }
     }
@@ -82,7 +88,7 @@ public class NonBungeeModeEvents implements Listener {
     @EventHandler
     public void handle(PlayerDropItemEvent event) {
         UUID uuid = event.getPlayer().getUniqueId();
-        if (playerManager.isLocked(uuid)) {
+        if (playerManager.getState(uuid) != null) {
             event.setCancelled(true);
         }
     }
@@ -90,7 +96,7 @@ public class NonBungeeModeEvents implements Listener {
     @EventHandler
     public void handle(PlayerInteractEvent event) {
         UUID uuid = event.getPlayer().getUniqueId();
-        if (playerManager.isLocked(uuid)) {
+        if (playerManager.getState(uuid) != null) {
             event.setCancelled(true);
         }
     }
