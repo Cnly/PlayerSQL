@@ -62,6 +62,7 @@ public class TimerCheckTask implements Runnable {
         scheduleTask(uuid);
         NewPlayerJoinEvent npje = new NewPlayerJoinEvent(Bukkit.getPlayer(uuid));
         Bukkit.getPluginManager().callEvent(npje);
+        if(Configs.BUNGEE) Bukkit.getPlayer(uuid).sendMessage(Configs.MSG_SYNCHRONIZED);
         if (DEBUG) {
             main.info("#5 New player: " + uuid);
         }
@@ -72,6 +73,7 @@ public class TimerCheckTask implements Runnable {
         playerManager.getDataMap().remove(uuid);
         syncManager.sync(uuid, data);
         scheduleTask(uuid);
+        if(Configs.BUNGEE) Bukkit.getPlayer(uuid).sendMessage(Configs.MSG_SYNCHRONIZED);
         if (DEBUG) {
             main.info("#1 Synchronized data for " + uuid);
         }

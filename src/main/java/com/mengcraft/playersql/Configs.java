@@ -19,6 +19,7 @@ public class Configs {
     public static final int LOAD_DELAY;
     
     public static final String MSG_LOADING;
+    public static final String MSG_SYNCHRONIZED;
 
     public static final File FILE;
     public static final Configuration CONF;
@@ -36,6 +37,7 @@ public class Configs {
         SYN_FOOD = yml.getBoolean("sync.food", true);
         BUNGEE = yml.getBoolean("plugin.bungee", true);
         MSG_LOADING = ChatColor.translateAlternateColorCodes('&', yml.getString("messages.dataLoading", "&aPlease wait while your data is being loaded :)"));
+        MSG_SYNCHRONIZED = ChatColor.translateAlternateColorCodes('&', yml.getString("messages.dataSynchronized", "&aEnjoy! All your data has been synchronized."));
         LOAD_DELAY = yml.getInt("plugin.delayInTicks", 30);
         DEBUG = yml.getBoolean("plugin.debug", false);
         CONF = yml;
