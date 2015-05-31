@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Server;
-import org.bukkit.craftbukkit.v1_8_R2.inventory.CraftItemStack;
+import org.bukkit.craftbukkit.v1_8_R3.inventory.CraftItemStack;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
@@ -59,7 +59,7 @@ public class SyncManager {
 
     public void save(Player player, boolean unlock) {
         if (player == null) {
-            throw new NullPointerException("#11 Can not save a null player.");
+            throw new NullPointerException("#11 Player can't be null!");
         }
         String data = getData(player);
         UUID uuid = player.getUniqueId();
@@ -92,7 +92,7 @@ public class SyncManager {
 
     public void load(Player player) {
         if (player == null) {
-            throw new NullPointerException("Player can't be null!");
+            throw new NullPointerException("#12 Player can't be null!");
         } else if (!player.isOnline()) {
             // Player has gone
             playerManager.setState(player.getUniqueId(), null);

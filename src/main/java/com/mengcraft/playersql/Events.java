@@ -41,13 +41,9 @@ public class Events implements Listener {
     public void handle(final PlayerJoinEvent event) {
         event.getPlayer().sendMessage(Configs.MSG_LOADING);
         playerManager.setState(event.getPlayer().getUniqueId(), State.JOIN_WAIT);
-        Runnable task = new Runnable() {
-            @Override
-            public void run() {
-                syncManager.load(event.getPlayer());
-            }
-        };
-        main.scheduler().runTaskLater(main, task, Configs.LOAD_DELAY);
+        main.scheduler().runTaskLater(main, 
+                ()-> syncManager.load(event.getPlayer()), 
+                Configs.LOAD_DELAY);
     }
 
     @EventHandler
