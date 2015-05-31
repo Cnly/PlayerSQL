@@ -1,11 +1,4 @@
-<<<<<<< HEAD
 main: com.mengcraft.playersql.PlayerZQL
 name: PlayerZQL
 version: ${project.version}
 author: [caoli5288, Cnly]
-=======
-main: com.mengcraft.playersql.Main
-name: PlayerSQL
-version: 1.12
-website: http://www.spigotmc.org/resources/playersql.552/
->>>>>>> upstream/master
