@@ -16,18 +16,31 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
 import com.mengcraft.playersql.SyncManager.State;
+import com.mengcraft.playersql.api.PlayerPreSwitchServerEvent;
 import com.mengcraft.playersql.task.LoadTask;
 
-public class NonBungeeModeEvents implements Listener {
+public class NonBungeeModePlayerListener implements Listener {
     
     private final PlayerZQL main;
-    private final SyncManager syncManager = SyncManager.DEFAULT;
+    private final SyncManager syncManager;
     private final PlayerManager playerManager = PlayerManager.DEFAULT;
     
     private ConcurrentHashMap<UUID, String> dataMap = new ConcurrentHashMap<>();
 
-    public NonBungeeModeEvents(PlayerZQL main) {
+    public NonBungeeModePlayerListener(PlayerZQL main) {
         this.main = main;
+        this.syncManager = main.syncManager;
+    }
+    
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void handle(PlayerPreSwitchServerEvent event) {
+        if (!event.isCancelled()) {
+            Player player = event.getPlayer();
+            if (playerManager.getState(player.getUniqueId()) == null) {
+                playerManager.setState(player.getUniqueId(), State.SWIT_WAIT);
+                syncManager.saveAndSwitch(player, event.getTarget());
+            }
+        }
     }
     
 	@EventHandler(priority = EventPriority.HIGHEST)
@@ -105,5 +118,9 @@ public class NonBungeeModeEvents implements Listener {
 	{
 	    this.dataMap.put(uuid, data);
 	}
+	
+    public void register() {
+        main.getServer().getPluginManager().registerEvents(this, main);
+    }
 	
 }

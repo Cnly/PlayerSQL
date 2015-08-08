@@ -28,7 +28,7 @@ public class TimerCheckTask implements Runnable {
 
     public TimerCheckTask(PlayerZQL main) {
         this.playerManager = PlayerManager.DEFAULT;
-        this.syncManager = SyncManager.DEFAULT;
+        this.syncManager = main.syncManager;
         this.main = main;
         this.server = main.getServer();
         this.scheduler = server.getScheduler();
@@ -73,7 +73,7 @@ public class TimerCheckTask implements Runnable {
         playerManager.getDataMap().remove(uuid);
         syncManager.sync(uuid, data);
         scheduleTask(uuid);
-        if(Configs.BUNGEE) Bukkit.getPlayer(uuid).sendMessage(Configs.MSG_SYNCHRONIZED);
+        if(Configs.BUNGEE && Configs.MSG_ENABLED) Bukkit.getPlayer(uuid).sendMessage(Configs.MSG_SYNCHRONIZED);
         if (DEBUG) {
             main.info("#1 Synchronized data for " + uuid);
         }
@@ -87,7 +87,7 @@ public class TimerCheckTask implements Runnable {
                 main.warn("#3 Cancelled existing timer task for " + uuid);
             }
         }
-        Runnable runnable = new TimerSaveTask(server, uuid);
+        Runnable runnable = new TimerSaveTask(main, uuid);
         int id = scheduleTask(runnable, 3600, 3600);
         playerManager.getSaveTaskIdMap().put(uuid, id);
         if (DEBUG) {
@@ -97,6 +97,10 @@ public class TimerCheckTask implements Runnable {
 
     private int scheduleTask(Runnable runnable, int i, int j) {
         return scheduler.runTaskTimer(main, runnable, i, j).getTaskId();
+    }
+
+    public void register() {
+        main.getServer().getScheduler().runTaskTimer(main, this, 0, 0);
     }
 
 }

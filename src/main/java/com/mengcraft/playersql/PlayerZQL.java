@@ -1,5 +1,6 @@
 package com.mengcraft.playersql;
 
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.Statement;
 import java.util.ArrayList;
@@ -9,7 +10,6 @@ import java.util.UUID;
 
 import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
-import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitScheduler;
 
@@ -17,9 +17,15 @@ import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.mengcraft.jdbc.ConnectionFactory;
-import com.mengcraft.jdbc.ConnectionHandler;
-import com.mengcraft.jdbc.ConnectionManager;
+import com.mengcraft.playersql.commands.SendCommand;
+import com.mengcraft.playersql.jdbc.ConnectionFactory;
+import com.mengcraft.playersql.jdbc.ConnectionHandler;
+import com.mengcraft.playersql.jdbc.ConnectionManager;
+import com.mengcraft.playersql.lib.ExpUtil;
+import com.mengcraft.playersql.lib.ExpUtilHandler;
+import com.mengcraft.playersql.lib.ItemUtil;
+import com.mengcraft.playersql.lib.ItemUtilHandler;
+import com.mengcraft.playersql.lib.Metrics;
 import com.mengcraft.playersql.SyncManager.State;
 import com.mengcraft.playersql.task.LoadTask;
 import com.mengcraft.playersql.task.TimerCheckTask;
@@ -28,12 +34,27 @@ public class PlayerZQL extends JavaPlugin {
     
     private static PlayerZQL instance;
     
+    public ItemUtil util;
+    public ExpUtil exp;
+    public SyncManager syncManager;
+    
+    private boolean enable;
+    
     private final HashMap<UUID, HashMap<String, JsonElement>> customData = new HashMap<>();
     
     @Override
     public void onEnable() {
         
         instance = this;
+        
+        try {
+            util = new ItemUtilHandler(this).handle();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        
+        exp = new ExpUtilHandler(this).handle();
+        syncManager = new SyncManager();
         
         saveResource("config.yml", false);
         ConnectionFactory factory = new ConnectionFactory(
@@ -46,28 +67,30 @@ public class PlayerZQL extends JavaPlugin {
             Connection connection = handler.getConnection();
             String sql = "CREATE TABLE IF NOT EXISTS PlayerData("
                     + "`Id` int NOT NULL AUTO_INCREMENT, "
-                    + "`Player` text NULL, "
+                    + "`Player` char(36) NULL, "
                     + "`Data` text NULL, "
                     + "`Online` int NULL, "
                     + "`Last` bigint NULL, "
-                    + "PRIMARY KEY(`Id`));";
+                    + "PRIMARY KEY(`Id`), "
+                    + "INDEX `player_index` (`Player`));";
             Statement action = connection.createStatement();
             action.executeUpdate(sql);
             action.close();
             handler.release(connection);
-            scheduler().runTask(this, new MetricsTask(this));
-            scheduler().runTaskTimer(this, new TimerCheckTask(this), 0, 0);
-            if(Configs.BUNGEE)
-            {
-                register(new Events(this), this);
-            }
-            else
-            {
-                register(new NonBungeeModeEvents(this), this);
-            }
         } catch (Exception e) {
-            getLogger().warning("Unable to connect to database.");
-            setEnabled(false);
+            throw new RuntimeException(e);
+        }
+        
+        new SendCommand().register(this);
+        new TimerCheckTask(this).register();
+        
+        if(Configs.BUNGEE)
+        {
+            new PlayerListener(this).register();
+        }
+        else
+        {
+            new NonBungeeModePlayerListener(this).register();
         }
         
         PlayerManager pm = PlayerManager.DEFAULT;
@@ -78,25 +101,34 @@ public class PlayerZQL extends JavaPlugin {
             new LoadTask(uuid, this).run();
         }
         
+        try {
+            new Metrics(this).start();
+        } catch (IOException e) {
+            getLogger().warning(e.toString());
+        }
+        
+        enable = true;
+        
     }
 
     @Override
     public void onDisable() {
         HandlerList.unregisterAll(this);
-        
-        SyncManager sm = SyncManager.DEFAULT;
-        PlayerManager pm = PlayerManager.DEFAULT;
-        List<Player> list = new ArrayList<>();
-        for (Player p : getServer().getOnlinePlayers()) {
-            UUID uuid = p.getUniqueId();
-            if (pm.getState(uuid) == null) {
-                list.add(p);
+        if(enable)
+        {
+            PlayerManager pm = PlayerManager.DEFAULT;
+            List<Player> list = new ArrayList<>();
+            for (Player p : getServer().getOnlinePlayers()) {
+                UUID uuid = p.getUniqueId();
+                if (pm.getState(uuid) == null) {
+                    list.add(p);
+                }
             }
+            if (list.size() > 0) {
+                syncManager.blockingSave(list, true);
+            }
+            ConnectionManager.DEFAULT.shutdown();
         }
-        if (list.size() > 0) {
-            sm.blockingSave(list, true);
-        }
-        ConnectionManager.DEFAULT.shutdown();
     }
     
     /**
@@ -184,16 +216,16 @@ public class PlayerZQL extends JavaPlugin {
         return getServer().getScheduler();
     }
 
-    private void register(Listener listener, PlayerZQL main) {
-        getServer().getPluginManager().registerEvents(listener, main);
-    }
-
     public void info(String string) {
         getLogger().info(string);
     }
 
     public void warn(String string) {
         getLogger().warning(string);
+    }
+    
+    public Player getPlayer(UUID uuid) {
+        return getServer().getPlayer(uuid);
     }
 
 }

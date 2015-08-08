@@ -10,6 +10,7 @@ plugin:
   # The delay before reading database. If players are often kicked because
   # of locked data, try increasing this value.
   debug: false
+  messages: false
 
 sync:
   health: true

@@ -8,7 +8,7 @@ import java.util.Map.Entry;
 import java.util.UUID;
 
 import com.google.common.collect.ImmutableMap;
-import com.mengcraft.jdbc.ConnectionManager;
+import com.mengcraft.playersql.jdbc.ConnectionManager;
 
 /**
  * A task which saves the given data into the database.
@@ -19,8 +19,8 @@ public class SaveTask implements Runnable {
 
     static {
         UPDATE = "UPDATE `PlayerData` " +
-                "SET `Data` = ?, `Last` = ? , Online = ? " +
-                "WHERE `Player` = ?";
+                 "SET `Data` = ?, `Last` = ? , Online = ? " +
+                 "WHERE `Player` = ?";
     }
 
     private final Map<UUID, String> map;

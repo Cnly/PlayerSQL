@@ -8,11 +8,11 @@ import java.util.UUID;
 
 import org.bukkit.Bukkit;
 
-import com.mengcraft.jdbc.ConnectionManager;
-import com.mengcraft.playersql.NonBungeeModeEvents;
+import com.mengcraft.playersql.NonBungeeModePlayerListener;
 import com.mengcraft.playersql.PlayerManager;
 import com.mengcraft.playersql.PlayerZQL;
 import com.mengcraft.playersql.SyncManager.State;
+import com.mengcraft.playersql.jdbc.ConnectionManager;
 
 public class LoadTask implements Runnable {
     
@@ -58,7 +58,7 @@ public class LoadTask implements Runnable {
      * @param nbme Used by the plugin in non-Bungee mode.
      * @return if the progress was successful
      */
-    public boolean doLoad(NonBungeeModeEvents nbme)
+    public boolean doLoad(NonBungeeModePlayerListener nbme)
     {
         try {
             Connection c = connectionManager.getConnection("playersql");
@@ -94,7 +94,7 @@ public class LoadTask implements Runnable {
         }
     }
     
-    private void processData(UUID uuid, String data, NonBungeeModeEvents nbme)
+    private void processData(UUID uuid, String data, NonBungeeModePlayerListener nbme)
     {
         playerManager.setState(uuid, State.JOIN_DONE);
         if(null == nbme)

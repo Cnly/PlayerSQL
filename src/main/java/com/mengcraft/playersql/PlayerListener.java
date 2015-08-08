@@ -4,6 +4,7 @@ import java.util.UUID;
 
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
@@ -14,15 +15,28 @@ import org.bukkit.event.player.PlayerLoginEvent.Result;
 import org.bukkit.event.player.PlayerQuitEvent;
 
 import com.mengcraft.playersql.SyncManager.State;
+import com.mengcraft.playersql.api.PlayerPreSwitchServerEvent;
 
-public class Events implements Listener {
+public class PlayerListener implements Listener {
 
-    private final SyncManager syncManager = SyncManager.DEFAULT;
-    private final PlayerManager playerManager = PlayerManager.DEFAULT;
     private final PlayerZQL main;
+    private final SyncManager syncManager;
+    private final PlayerManager playerManager = PlayerManager.DEFAULT;
 
-    public Events(PlayerZQL main) {
+    public PlayerListener(PlayerZQL main) {
         this.main = main;
+        this.syncManager = main.syncManager;
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void handle(PlayerPreSwitchServerEvent event) {
+        if (!event.isCancelled()) {
+            Player player = event.getPlayer();
+            if (playerManager.getState(player.getUniqueId()) == null) {
+                playerManager.setState(player.getUniqueId(), State.SWIT_WAIT);
+                syncManager.saveAndSwitch(player, event.getTarget());
+            }
+        }
     }
 
     @EventHandler
@@ -39,10 +53,10 @@ public class Events implements Listener {
 
     @EventHandler
     public void handle(final PlayerJoinEvent event) {
-        event.getPlayer().sendMessage(Configs.MSG_LOADING);
+        if(Configs.MSG_ENABLED) event.getPlayer().sendMessage(Configs.MSG_LOADING);
         playerManager.setState(event.getPlayer().getUniqueId(), State.JOIN_WAIT);
         main.scheduler().runTaskLater(main, 
-                ()-> syncManager.load(event.getPlayer()), 
+                () -> syncManager.load(event.getPlayer()), 
                 Configs.LOAD_DELAY);
     }
 
@@ -57,7 +71,7 @@ public class Events implements Listener {
 
     @EventHandler
     public void handle(EntityDamageEvent event) {
-        if(!(event.getEntity() instanceof Player)) return;
+        if (!(event.getEntity() instanceof Player)) return;
         UUID uuid = event.getEntity().getUniqueId();
         if (playerManager.getState(uuid) != null) {
             event.setCancelled(true);
@@ -78,6 +92,10 @@ public class Events implements Listener {
         if (playerManager.getState(uuid) != null) {
             event.setCancelled(true);
         }
+    }
+
+    public void register() {
+        main.getServer().getPluginManager().registerEvents(this, main);
     }
 
 }

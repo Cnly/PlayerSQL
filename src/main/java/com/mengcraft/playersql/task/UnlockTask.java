@@ -5,8 +5,8 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.UUID;
 
-import com.mengcraft.jdbc.ConnectionManager;
 import com.mengcraft.playersql.PlayerManager;
+import com.mengcraft.playersql.jdbc.ConnectionManager;
 
 public class UnlockTask implements Runnable {
 

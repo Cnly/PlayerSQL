@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.mengcraft</groupId>
     <artifactId>playerzql</artifactId>
-    <version>1.14.0-SNAPSHOT</version>
+    <version>1.16-SNAPSHOT</version>
     <name>PlayerZQL</name>
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
@@ -15,8 +15,8 @@
             <url>http://ci.mengcraft.com:8080/plugin/repository/everything/</url>
         </repository>
         <repository>
-            <id>repo.bukkit.org</id>
-            <url>http://repo.bukkit.org/content/groups/public/</url>
+            <id>repo-spigot</id>
+            <url>http://repo.md-5.net/content/groups/public/</url>
         </repository>
     </repositories>
     <dependencies>
@@ -30,12 +30,6 @@
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
             <version>2.3.1</version>
-            <scope>compile</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.ow2.util.base64</groupId>
-            <artifactId>base64</artifactId>
-            <version>2.0.0</version>
             <scope>compile</scope>
         </dependency>
     </dependencies>
@@ -54,6 +48,12 @@
                         <configuration>
                             <minimizeJar>true</minimizeJar>
                             <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <relocations>
+                                <relocation>
+                                    <pattern>com.google.gson</pattern>
+                                    <shadedPattern>com.mengcraft.playersql.lib.gson</shadedPattern>
+                                </relocation>
+                            </relocations>
                         </configuration>
                     </execution>
                 </executions>

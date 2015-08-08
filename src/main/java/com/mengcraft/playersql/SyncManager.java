@@ -12,10 +12,8 @@ import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Server;
-import org.bukkit.craftbukkit.v1_8_R3.inventory.CraftItemStack;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
@@ -30,16 +28,14 @@ import com.google.gson.JsonParser;
 import com.mengcraft.playersql.events.DataLoadedEvent;
 import com.mengcraft.playersql.events.PlayerSavingEvent;
 import com.mengcraft.playersql.events.PlayerSynchronizedEvent;
+import com.mengcraft.playersql.lib.ExpUtil;
+import com.mengcraft.playersql.lib.ItemUtil;
 import com.mengcraft.playersql.task.LoadTask;
+import com.mengcraft.playersql.task.SaveAndSwitchTask;
 import com.mengcraft.playersql.task.SaveTask;
 import com.mengcraft.playersql.task.UnlockTask;
-import com.mengcraft.playersql.util.ExpsUtil;
-import com.mengcraft.playersql.util.ItemUtil;
-import com.mengcraft.util.ArrayBuilder;
 
 public class SyncManager {
-    
-    public static final SyncManager DEFAULT = new SyncManager();
     
     private static final Gson GSON = new Gson();
     
@@ -47,23 +43,30 @@ public class SyncManager {
     private final ExecutorService service;
     private final JsonParser parser = new JsonParser();
     private final PlayerManager playerManager = PlayerManager.DEFAULT;
-    private final Server server = Bukkit.getServer();
+    private final Server server;
+    private final ItemUtil util;
+    private final ExpUtil exp;
 
-    private SyncManager() {
+    SyncManager() {
         this.service = new ThreadPoolExecutor(2, Integer.MAX_VALUE,
                 60000,
                 TimeUnit.MILLISECONDS,
                 new SynchronousQueue<Runnable>()
                 );
+        this.util = main.util;
+        this.server = main.getServer();
+        this.exp = main.exp;
+    }
+
+    public void saveAndSwitch(Player player, String target) {
+        service.execute(new SaveAndSwitchTask(player, getData(player), target));
     }
 
     public void save(Player player, boolean unlock) {
         if (player == null) {
             throw new NullPointerException("#11 Player can't be null!");
         }
-        String data = getData(player);
-        UUID uuid = player.getUniqueId();
-        service.execute(new SaveTask(uuid, data, unlock));
+        service.execute(new SaveTask(player.getUniqueId(), getData(player), unlock));
     }
 
     public void save(List<Player> list, boolean unlock) {
@@ -73,19 +76,16 @@ public class SyncManager {
         }
         service.execute(new SaveTask(map, unlock));
     }
-    
+
     /**
      * Used by the main thread to save all players on disable.
      */
     public void blockingSave(List<Player> list, boolean unlock) {
         save(list, unlock);
         service.shutdown();
-        try
-        {
+        try {
             service.awaitTermination(1, TimeUnit.MINUTES);
-        }
-        catch(InterruptedException e)
-        {
+        } catch (InterruptedException e) {
             e.printStackTrace();
         }
     }
@@ -123,7 +123,7 @@ public class SyncManager {
         JsonArray rootArray = new JsonArray();
         rootArray.add(GSON.toJsonTree(player.getHealth()));
         rootArray.add(GSON.toJsonTree(player.getFoodLevel()));
-        rootArray.add(GSON.toJsonTree(ExpsUtil.UTIL.getExp(player)));
+        rootArray.add(GSON.toJsonTree(exp.getExp(player)));
         rootArray.add(getItemArray(player.getInventory().getContents()));
         rootArray.add(getItemArray(player.getInventory().getArmorContents()));
         rootArray.add(getItemArray(player.getEnderChest().getContents()));
@@ -131,7 +131,7 @@ public class SyncManager {
         rootArray.add(GSON.toJsonTree(player.getInventory().getHeldItemSlot()));
         
         PlayerSavingEvent pse = new PlayerSavingEvent(player);
-        Bukkit.getPluginManager().callEvent(pse);
+        server.getPluginManager().callEvent(pse);
         rootArray.add(pse.getAllData());
         
         return rootArray.toString();
@@ -150,7 +150,7 @@ public class SyncManager {
             p.setFoodLevel(array.get(1).getAsInt());
         }
         if (Configs.SYN_EXPS) {
-            ExpsUtil.UTIL.setExp(p, array.get(2).getAsInt());
+            exp.setExp(p, array.get(2).getAsInt());
         }
         if (Configs.SYN_INVT) {
             ItemStack[] stacks = arrayToStacks(array.get(3).getAsJsonArray());
@@ -179,9 +179,9 @@ public class SyncManager {
         this.main.setCustomData(p.getUniqueId(), GSON.<HashMap<String, JsonElement>>fromJson(customData, new TypeToken<HashMap<String, JsonElement>>(){}.getType()));
         
         DataLoadedEvent dle = new DataLoadedEvent(p.getUniqueId());
-        Bukkit.getPluginManager().callEvent(dle);
+        server.getPluginManager().callEvent(dle);
         PlayerSynchronizedEvent pse = new PlayerSynchronizedEvent(p);
-        Bukkit.getPluginManager().callEvent(pse);
+        server.getPluginManager().callEvent(pse);
         
     }
 
@@ -206,7 +206,11 @@ public class SyncManager {
                 builder.append(new ItemStack(Material.AIR));
             } else {
                 String data = element.getAsString();
-                builder.append(ItemUtil.UTIL.getItemStack(data));
+                try {
+                    builder.append(util.convert(data));
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
             }
         }
         return builder.build(ItemStack.class);
@@ -244,8 +248,14 @@ public class SyncManager {
                 result.add(null);
             else
             {
-                CraftItemStack craftItem = CraftItemStack.asCraftCopy(item);
-                result.add(GSON.toJsonTree(ItemUtil.UTIL.getString(craftItem)));
+                try
+                {
+                    result.add(GSON.toJsonTree(util.convert(item)));
+                }
+                catch(Exception e)
+                {
+                    throw new RuntimeException("Cannot convert item", e);
+                }
             }
         }
 
@@ -256,6 +266,8 @@ public class SyncManager {
         CONN_DONE,
         JOIN_WAIT,
         JOIN_DONE,
+        JOIN_FAID,
+        SWIT_WAIT
     }
 
 }
