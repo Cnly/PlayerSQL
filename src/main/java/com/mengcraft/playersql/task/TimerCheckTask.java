@@ -1,5 +1,7 @@
 package com.mengcraft.playersql.task;
 
+import io.github.cnly.playerzql.events.NewPlayerJoinEvent;
+
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -14,7 +16,6 @@ import com.mengcraft.playersql.PlayerManager;
 import com.mengcraft.playersql.PlayerZQL;
 import com.mengcraft.playersql.SyncManager;
 import com.mengcraft.playersql.SyncManager.State;
-import com.mengcraft.playersql.events.NewPlayerJoinEvent;
 
 public class TimerCheckTask implements Runnable {
     

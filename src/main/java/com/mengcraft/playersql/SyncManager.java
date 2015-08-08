@@ -1,5 +1,9 @@
 package com.mengcraft.playersql;
 
+import io.github.cnly.playerzql.events.DataLoadedEvent;
+import io.github.cnly.playerzql.events.PlayerSavingEvent;
+import io.github.cnly.playerzql.events.PlayerSynchronizedEvent;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -25,9 +29,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.mengcraft.playersql.events.DataLoadedEvent;
-import com.mengcraft.playersql.events.PlayerSavingEvent;
-import com.mengcraft.playersql.events.PlayerSynchronizedEvent;
 import com.mengcraft.playersql.lib.ExpUtil;
 import com.mengcraft.playersql.lib.ItemUtil;
 import com.mengcraft.playersql.task.LoadTask;

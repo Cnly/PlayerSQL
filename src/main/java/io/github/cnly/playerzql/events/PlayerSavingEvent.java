@@ -1,20 +1,14 @@
-package com.mengcraft.playersql.events;
+package io.github.cnly.playerzql.events;
 
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.mengcraft.playersql.PlayerZQL;
 
-/**
- * An event called when PlayerZQL has just finished updating an in-game
- * player with the data from the database.<br/>
- * If the player is new to the server, which means there was no data in the
- * database, this event will not fire.
- *
- */
-public class PlayerSynchronizedEvent extends Event
+public class PlayerSavingEvent extends Event
 {
     
     private static final HandlerList handlerList = new HandlerList();
@@ -22,14 +16,21 @@ public class PlayerSynchronizedEvent extends Event
     private final PlayerZQL main = PlayerZQL.getInstance();
     private final Player player;
     
-    public PlayerSynchronizedEvent(Player player)
+    public PlayerSavingEvent(Player player)
     {
+        super();
         this.player = player;
     }
     
-    public Player getPlayer()
+    /**
+     * Sets custom data
+     * @param key The key
+     * @param value The value
+     * @return previous associated data if present
+     */
+    public JsonElement setData(String key, JsonElement value)
     {
-        return this.player;
+        return this.main.setCustomData(player.getUniqueId(), key, value);
     }
     
     /**
@@ -39,7 +40,18 @@ public class PlayerSynchronizedEvent extends Event
      */
     public JsonElement getData(String key)
     {
-        return this.main.getCustomData(this.player.getUniqueId(), key);
+        return this.main.getCustomData(player.getUniqueId(), key);
+    }
+    
+    public Player getPlayer()
+    {
+        return player;
+    }
+
+    @SuppressWarnings("deprecation")
+    public JsonObject getAllData()
+    {
+        return main.getAllCustomData(player.getUniqueId());
     }
     
     @Override

@@ -1,4 +1,4 @@
-package com.mengcraft.playersql.events;
+package io.github.cnly.playerzql.events;
 
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
