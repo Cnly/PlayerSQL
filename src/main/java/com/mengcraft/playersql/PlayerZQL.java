@@ -28,6 +28,7 @@ import com.mengcraft.playersql.lib.ItemUtilHandler;
 import com.mengcraft.playersql.lib.Metrics;
 import com.mengcraft.playersql.SyncManager.State;
 import com.mengcraft.playersql.task.LoadTask;
+import com.mengcraft.playersql.task.SwitchServerTask;
 import com.mengcraft.playersql.task.TimerCheckTask;
 
 public class PlayerZQL extends JavaPlugin {
@@ -83,6 +84,7 @@ public class PlayerZQL extends JavaPlugin {
         
         new SendCommand().register(this);
         new TimerCheckTask(this).register();
+        new SwitchServerTask(this).register();
         
         if(Configs.BUNGEE)
         {
